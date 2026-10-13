@@ -2,6 +2,8 @@
 
 Windows Codex 桌面版的独立额度悬浮条，顶部居中，随窗口移动和缩放。当前版本：**1.0.7**。
 
+[下载 Windows x64 便携包](https://github.com/Leeroysunfury/codex-usage-bar/releases/download/v1.0.7/codex-usage-bar-1.0.7-windows-x64.zip) · [版本说明](https://github.com/Leeroysunfury/codex-usage-bar/releases/tag/v1.0.7)
+
 ![额度条演示，全部为虚构数据](docs/assets/preview.png)
 
 ## 功能
