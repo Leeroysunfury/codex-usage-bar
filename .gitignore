@@ -1,0 +1,27 @@
+# Runtime data and authentication must never enter the public repository.
+state/
+test-results/
+sessions/
+archived_sessions/
+work/
+*.jsonl
+*.log
+*.signal
+*.request
+*.pdb
+*.zip
+.env
+.env.*
+auth.json
+status.json
+follower-status.json
+rate-preferences.json
+*-live*
+quota-startup-*.json
+*verification.json
+
+# Editor files.
+.vs/
+.vscode/
+*.user
+*.suo

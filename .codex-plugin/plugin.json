@@ -1,0 +1,24 @@
+{
+  "name": "codex-usage-bar",
+  "version": "1.0.7",
+  "description": "Windows 桌面版顶部显示五小时与周剩余额度及重置时间、本日 Token、缓存命中量与命中率、活跃对话 Token/秒。",
+  "author": {
+    "name": "Codex Usage Bar contributors"
+  },
+  "skills": "./skills",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Codex 额度条",
+    "shortDescription": "剩余额度、本日 Token、缓存命中量与命中率、对话均速",
+    "longDescription": "随 Windows Codex 桌面窗口显示的顶部悬浮条，自适应宽度，保持普通窗口层级。官方只读接口查询五小时与周剩余额度及系统本地时间重置时间，复用正在运行的 Codex 独立代理参数，自动启动不依赖登录进程的旧代理环境；失败自动重试。本机日志按系统本地时区自然日计算 Token，并显示缓存输入命中量与缓存输入占总输入的命中率。每秒显示选中桌面对话本轮已记录 Token 除以经过时间的均速，包含缓存；调用结束后更新。默认跟踪最近开始运行的桌面对话，可在菜单指定，不合并子代理。带刷新、隐藏、退出及随 Codex 启动开关。",
+    "developerName": "Codex Usage Bar contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Read local token usage",
+      "Read active conversation token rate",
+      "Read account rate limits",
+      "Windows desktop overlay"
+    ]
+  }
+}
+

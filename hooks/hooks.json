@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "SessionStart": [{
+      "hooks": [{
+        "type": "command",
+        "command": "powershell.exe -NoProfile -WindowStyle Hidden -File \"${PLUGIN_ROOT}/scripts/start.ps1\" -FromHook",
+        "timeout": 10,
+        "statusMessage": "启动 Codex 额度条"
+      }]
+    }]
+  }
+}
