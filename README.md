@@ -1,8 +1,8 @@
 # Codex Usage Bar · Codex 额度条
 
-Windows Codex 桌面版的独立额度悬浮条，顶部居中，随窗口移动和缩放。当前版本：**1.0.7**。
+Windows Codex 桌面版的独立额度悬浮条，左边缘对齐顶部帮助菜单右侧，随窗口移动和缩放。版本：**1.0.9**。
 
-[下载 Windows x64 便携包](https://github.com/Leeroysunfury/codex-usage-bar/releases/download/v1.0.7/codex-usage-bar-1.0.7-windows-x64.zip) · [版本说明](https://github.com/Leeroysunfury/codex-usage-bar/releases/tag/v1.0.7)
+[下载 Windows x64 便携包](https://github.com/Leeroysunfury/codex-usage-bar/releases/download/v1.0.9/codex-usage-bar-1.0.9-windows-x64.zip) · [版本说明](https://github.com/Leeroysunfury/codex-usage-bar/releases/tag/v1.0.9)
 
 ![额度条演示，全部为虚构数据](docs/assets/preview.png)
 
@@ -11,7 +11,7 @@ Windows Codex 桌面版的独立额度悬浮条，顶部居中，随窗口移动
 - 五小时、周剩余额度与各自的系统本地时间重置时间。
 - 本日输入与输出 Token 总量，按系统本地时区自然日统计。
 - 本日缓存命中量、缓存输入占总输入的命中率。
-- 指定桌面对话本轮平均 Token/秒。
+- 指定桌面对话本轮消耗均速与输出均速，分别显示输入加输出、仅输出的 Token/秒。
 - 窄窗口布局、菜单外点击关闭、普通窗口层级与输入法候选窗共存。
 - 可选“随 Codex 启动”，最后一个 Codex 窗口关闭后停止额度查询。
 
@@ -43,9 +43,10 @@ Start-Process -FilePath .\bin\CodexUsageBar.exe -ArgumentList --enable-autostart
 | 本日 Token | 本机会话日志中输入、输出累计量的本日增量；缓存输入和推理输出已包含，不重复相加 |
 | 缓存命中量 | 本日 `cached_input_tokens` 增量之和 |
 | 缓存命中率 | 缓存输入 Token ÷ 全部输入 Token（含缓存）× 100%；输入为零时显示未知 |
-| 均速 | 选中桌面对话本轮已记录的输入与输出 Token ÷ 本轮经过秒数，包含缓存和工具等待时间 |
+| 消耗均速 | 选中桌面对话本轮已记录的输入与输出 Token ÷ 本轮经过秒数，包含缓存和工具等待时间 |
+| 输出均速 | 选中桌面对话本轮已记录的输出 Token（包含推理输出）÷ 本轮经过秒数，不含输入或缓存输入，包含工具等待时间 |
 
-Token 与缓存指标每秒读取本机日志，额度每 45 秒查询。用量一般在模型调用结束后记录，因此均速是本轮平均值，不是逐 Token 生成速度，也不是费用消耗速度。
+Token 与缓存指标每秒读取本机日志，额度每 45 秒查询。用量一般在模型调用结束后记录，因此两项均速都是本轮平均值，不是逐 Token 生成速度，也不是费用消耗速度。
 
 本日量包含本机桌面与 CLI 会话，不覆盖其他设备、未下载的云端记录。默认跟踪最近开始运行的桌面对话，并不能识别当前界面正在查看哪个对话；可在菜单指定，不合并子代理。
 
@@ -70,7 +71,7 @@ $test.WaitForExit()
 Get-Content .\test-results\self-test.json
 ```
 
-`--self-test` 使用虚构日志验证计数、日期、缓存比例和代理解析。`--interaction-test` 和 `--follower-test` 会创建测试窗口，前者会模拟鼠标点击，请在本机没有其他交互时手动运行。它们不发送模型请求。
+`--self-test` 使用虚构日志验证计数、日期、缓存比例、两项均速和代理解析。`--layout-test test-results/layout.json` 检查两项均速及缓存标签在不同窗口宽度和 DPI 下的显示，不模拟鼠标点击。`--interaction-test` 和 `--follower-test` 会创建测试窗口，前者会模拟鼠标点击，请在本机没有其他交互时手动运行。它们不发送模型请求。
 
 文件路径由项目位置、环境变量或 Windows 用户目录动态解析；没有写死开发者磁盘路径。Windows 登录启动项需要系统可定位的程序路径，因此在启用时动态生成，不能存储依赖当前工作目录的相对命令。
 
@@ -87,4 +88,3 @@ Get-Content .\test-results\self-test.json
 这是社区独立工具，不是 OpenAI 官方产品。兼容性取决于 Codex 日志及 app-server 接口。尚未设置开源许可证。
 
 接口参考：[Codex App Server](https://learn.chatgpt.com/docs/app-server)。
-

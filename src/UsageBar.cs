@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -36,7 +36,9 @@ sealed class ConversationRate {
     public long Input,Output,Cached;
     public long Total { get { return Input+Output; } }
     public double Seconds;
-    public double? PerSecond { get { return !Running?0:Stale||Seconds<=0?null:(double?)Total/Seconds; } }
+    public double? PerSecond { get { return Rate(Total); } }
+    public double? OutputPerSecond { get { return Rate(Output); } }
+    double? Rate(long count) { return !Running?0:Stale||Seconds<=0?null:(double?)count/Seconds; }
 }
 sealed class FileCursor {
     public long Offset,Input,Output,Cached;
@@ -487,7 +489,7 @@ sealed class UsageForm:Form {
     readonly System.Windows.Forms.Timer quotaTimer=new System.Windows.Forms.Timer{Interval=1000};
     readonly TokenLedger ledger=new TokenLedger(Program.Home);
     readonly Rpc rpc=new Rpc();
-    readonly Label five=new Label(),week=new Label(),fiveResetLabel=new Label(),weekResetLabel=new Label(),today=new Label(),rate=new Label(),cachedAmount=new Label(),cachedRatio=new Label(),status=new Label(),menuButton=new Label();
+    readonly Label five=new Label(),week=new Label(),fiveResetLabel=new Label(),weekResetLabel=new Label(),today=new Label(),rate=new Label(),outputRate=new Label(),cachedAmount=new Label(),cachedRatio=new Label(),status=new Label(),menuButton=new Label();
     readonly ToolTip tip=new ToolTip{AutoPopDelay=15000,InitialDelay=300,ReshowDelay=150};
     readonly ContextMenuStrip menu=new ContextMenuStrip();
     readonly ToolStripMenuItem trackingMenu=new ToolStripMenuItem("速率跟踪对话");
@@ -511,7 +513,7 @@ sealed class UsageForm:Form {
         AutoScaleMode=AutoScaleMode.None; DoubleBuffered=true;
         BackColor=Color.FromArgb(26,27,30); ForeColor=Color.FromArgb(232,234,238);
         ClientSize=new Size(630,42);
-        foreach(Label label in new[]{five,week,fiveResetLabel,weekResetLabel,today,rate,cachedAmount,cachedRatio,status,menuButton}) {
+        foreach(Label label in new[]{five,week,fiveResetLabel,weekResetLabel,today,rate,outputRate,cachedAmount,cachedRatio,status,menuButton}) {
             label.AutoSize=false; label.TextAlign=ContentAlignment.MiddleLeft; label.BackColor=BackColor;
             label.ForeColor=ForeColor; label.Font=new Font("Microsoft YaHei UI",9f); Controls.Add(label);
             label.ContextMenuStrip=menu;
@@ -560,31 +562,31 @@ sealed class UsageForm:Form {
         LayoutLabels(); Render();
     }
     void LayoutLabels() {
-        compact=Width<610*scale; tiny=Width<430*scale; twoRows=Width<290*scale;
+        compact=Width<610*scale; tiny=Width<430*scale; twoRows=Width<530*scale;
         int gap=(int)((compact?8:12)*scale),h=ClientSize.Height,button=(int)(25*scale);
-        int available=Width-gap-button;
-        int quotaHeight=twoRows?h/2:h;
-        int firstLine=(int)(18*scale);
+        int available=Width-gap-button,firstLine=(int)(18*scale),band=(int)(38*scale);
+        Label[] groups={five,week,today,rate,outputRate};
         if(twoRows) {
-            int half=available/2;
-            five.SetBounds(gap,1,half,firstLine); week.SetBounds(gap+half,1,available-half,firstLine);
-            today.SetBounds(gap,quotaHeight,half,firstLine); rate.SetBounds(gap+half,quotaHeight,available-half,firstLine);
+            int columns=Width<290*scale?2:3;
+            for(int i=0;i<groups.Length;i++) {
+                int col=i%columns;
+                groups[i].SetBounds(gap+available*col/columns,1+(i/columns)*band,
+                    available*(col+1)/columns-available*col/columns,firstLine);
+            }
         } else {
-            int col1=(int)(available*(tiny?0.24:0.245)),col2=(int)(available*(tiny?0.30:0.26)),col3=(int)(available*(tiny?0.26:0.285));
-            five.SetBounds(gap,1,col1,firstLine); week.SetBounds(gap+col1,1,col2,firstLine);
-            today.SetBounds(gap+col1+col2,1,col3,firstLine);
-            rate.SetBounds(gap+col1+col2+col3,1,available-col1-col2-col3,firstLine);
+            int[] edges={0,(int)(available*0.16),(int)(available*0.34),(int)(available*0.57),(int)(available*0.785),available};
+            for(int i=0;i<groups.Length;i++) groups[i].SetBounds(gap+edges[i],1,edges[i+1]-edges[i],firstLine);
         }
-        fiveResetLabel.SetBounds(five.Left,1+firstLine,five.Width,Math.Max(1,quotaHeight-firstLine-3));
-        weekResetLabel.SetBounds(week.Left,1+firstLine,week.Width,Math.Max(1,quotaHeight-firstLine-3));
-        cachedAmount.SetBounds(today.Left,today.Top+firstLine,today.Width,Math.Max(1,h-today.Top-firstLine-2));
-        cachedRatio.SetBounds(rate.Left,rate.Top+firstLine,rate.Width,Math.Max(1,h-rate.Top-firstLine-2));
+        fiveResetLabel.SetBounds(five.Left,five.Top+firstLine,five.Width,band-firstLine-2);
+        weekResetLabel.SetBounds(week.Left,week.Top+firstLine,week.Width,band-firstLine-2);
+        cachedAmount.SetBounds(today.Left,today.Top+firstLine,today.Width,band-firstLine-2);
+        cachedRatio.SetBounds(rate.Left,rate.Top+firstLine,rate.Width,band-firstLine-2);
         menuButton.SetBounds(Width-button,1,button,h-3);
         status.Visible=false;
         Render();
     }
     void SetLabelFonts() {
-        foreach(Label label in new[]{five,week,fiveResetLabel,weekResetLabel,today,rate,cachedAmount,cachedRatio,status,menuButton}) {
+        foreach(Label label in new[]{five,week,fiveResetLabel,weekResetLabel,today,rate,outputRate,cachedAmount,cachedRatio,status,menuButton}) {
             Font old=label.Font;
             label.Font=new Font("Microsoft YaHei UI",(label==fiveResetLabel||label==weekResetLabel||label==cachedAmount||label==cachedRatio?8f:9f)*scale);
             if(old!=null) old.Dispose();
@@ -628,7 +630,7 @@ sealed class UsageForm:Form {
             "对话："+active.Title+"\nID："+active.Id+"\n状态："+(!active.Running?"空闲":active.Stale?"记录超过 15 分钟未更新，速率未知":"运行中")+
             "\n本轮已记录 "+active.Total.ToString("N0")+" Token，经过 "+active.Seconds.ToString("0.0")+" 秒。"+
             "\n输入 "+active.Input.ToString("N0")+"，输出 "+active.Output.ToString("N0")+"，其中缓存输入 "+active.Cached.ToString("N0")+" 已包含。";
-        return mode+"\n"+detail+"\n均速 = 本轮已记录的输入 + 输出 Token / 本轮经过的秒数。\n包含缓存输入、推理输出及工具等待时间；不是输出文字的生成速度。\n每秒刷新，Token 数量在模型调用结束写入记录后更新，新对话发现最多约 5 秒。\n同时运行多个对话时只统计选中的一个，可在菜单指定；不合并子代理。";
+        return mode+"\n"+detail+"\n消耗均速 = 本轮已记录的（输入 + 输出）Token / 本轮经过秒数，含缓存输入。\n输出均速 = 本轮已记录的输出 Token / 本轮经过秒数，含推理输出且不重复相加。\n两者均包含工具等待时间，是本轮平均值，不是逐 Token 实时生成速度。\n每秒刷新，Token 数量在模型调用结束写入记录后更新，新对话发现最多约 5 秒。\n同时运行多个对话时只统计选中的一个，可在菜单指定；不合并子代理。";
     }
     void Render() {
         five.Text=(tiny?"5h ":compact?"5h 剩余 ":"5 小时剩余  ")+Percent(quota.Five);
@@ -640,8 +642,11 @@ sealed class UsageForm:Form {
         if(tokens.Day!=null&&TextRenderer.MeasureText(today.Text,today.Font).Width>today.Width) today.Text=(tiny||compact?"今日 ":"本日 Token ")+ShortTokens(tokens.Total);
         ConversationRate active=CurrentRate;
         double? speed=active==null?(selectedThread.Length==0&&tokens.Day!=null?(double?)0:null):active.PerSecond;
-        rate.Text=(tiny?"":"均速 ")+(speed.HasValue?ShortRate(speed.Value)+(tiny?"/s":" T/s"):"—");
+        double? outputSpeed=active==null?(selectedThread.Length==0&&tokens.Day!=null?(double?)0:null):active.OutputPerSecond;
+        SetRateText(rate,"消耗均速 ","消耗 ","耗 ",speed);
+        SetRateText(outputRate,"输出均速 ","输出 ","出 ",outputSpeed);
         rate.ForeColor=active!=null&&active.Running&&!active.Stale?Color.FromArgb(117,195,247):Color.FromArgb(146,153,166);
+        outputRate.ForeColor=rate.ForeColor;
         double? cachePercent=tokens.Day==null?null:CacheHitPercent(tokens.Input,tokens.Cached);
         cachedAmount.Text=(compact?"缓存 ":"缓存命中 ")+(tokens.Day==null?"…":ShortTokens(tokens.Cached));
         if(TextRenderer.MeasureText(cachedAmount.Text,cachedAmount.Font).Width>cachedAmount.Width) cachedAmount.Text="缓"+(tokens.Day==null?"…":ShortTokens(tokens.Cached));
@@ -650,7 +655,7 @@ sealed class UsageForm:Form {
         if(TextRenderer.MeasureText(cachedRatio.Text,cachedRatio.Font).Width>cachedRatio.Width) cachedRatio.Text=Percent(cachePercent);
         string cacheDetails="本日缓存命中量："+tokens.Cached.ToString("N0")+" 输入 Token。\n本日缓存命中率："+Percent(cachePercent)+"。\n命中率 = 缓存输入 Token / 总输入 Token（含缓存），不含输出。\n系统本地时区自然日，本机所有 Codex 会话，与本日 Token 范围相同。\n缓存已包含在本日输入 Token 中，不重复相加。\n以日志记录的缓存用量为准，不是请求命中次数或费用折扣。";
         tip.SetToolTip(cachedAmount,cacheDetails); tip.SetToolTip(cachedRatio,cacheDetails);
-        tip.SetToolTip(rate,RateDetails());
+        tip.SetToolTip(rate,RateDetails()); tip.SetToolTip(outputRate,RateDetails());
         five.ForeColor=QuotaColor(quota.Five); week.ForeColor=QuotaColor(quota.Week);
         bool stale=quota.Updated!=default(DateTimeOffset)&&DateTimeOffset.UtcNow-quota.Updated>TimeSpan.FromMinutes(2);
         status.Text=!String.IsNullOrEmpty(quota.Error)?"离线":stale?"缓存":"本机";
@@ -665,6 +670,15 @@ sealed class UsageForm:Form {
         Invalidate();
         WriteStatus();
     }
+    void SetRateText(Label label,string full,string shortLabel,string minimal,double? value) {
+        string amount=value.HasValue?ShortRate(value.Value):"—";
+        label.Text=full+amount+(value.HasValue?" T/s":"");
+        if(TextRenderer.MeasureText(label.Text,label.Font).Width>label.Width)
+            label.Text=shortLabel+amount+(value.HasValue?"/s":"");
+        if(TextRenderer.MeasureText(label.Text,label.Font).Width>label.Width)
+            label.Text=minimal+amount+(value.HasValue?"/s":"");
+    }
+    internal static int LayoutHeight(int width) { return width<290?114:width<530?76:38; }
     static Color QuotaColor(double? v) { return !v.HasValue?Color.FromArgb(146,153,166):v.Value<=10?Color.FromArgb(255,119,119):v.Value<=25?Color.FromArgb(239,180,90):Color.FromArgb(117,221,184); }
     internal static DateTimeOffset? ResetDate(long epoch) {
         return ResetDate(epoch,TimeZoneInfo.Local);
@@ -715,10 +729,13 @@ sealed class UsageForm:Form {
                 rateMode=selectedThread.Length==0?"automatic_latest_started_desktop_turn":"selected_thread",
                 tokensPerSecond=active==null?(selectedThread.Length==0&&tokens.Day!=null?(double?)0:null):active.PerSecond,
                 rateDefinition="recorded_turn_input_plus_output_divided_by_elapsed_seconds_including_cached_input",
+                outputTokensPerSecond=active==null?(selectedThread.Length==0&&tokens.Day!=null?(double?)0:null):active.OutputPerSecond,
+                outputRateDefinition="recorded_turn_output_including_reasoning_divided_by_elapsed_seconds_including_tool_waits",
+                activeTurnOutputTokens=active==null?0:active.Output,
                 activeTurnTokens=active==null?0:active.Total,activeTurnElapsedSeconds=active==null?0:active.Seconds,
                 activeRunning=active!=null&&active.Running,rateStale=active!=null&&active.Stale,
                 activeConversations=tokens.Conversations.Count(c=>c.Running&&!c.Stale),
-                appWindow=app.ToInt64(),barWindow=Handle.ToInt64(),visible=Visible,aboveApp=Native.IsAboveWindow(Handle,app),topmost=(Native.GetWindowLongPtr(Handle,-20).ToInt64()&8)!=0,
+                appWindow=app.ToInt64(),barWindow=Handle.ToInt64(),visible=Visible,aboveApp=Native.IsAboveWindow(Handle,app),titleAnchor=TitleAnchor.Measured?"help_right":"left_fallback",topmost=(Native.GetWindowLongPtr(Handle,-20).ToInt64()&8)!=0,
                 ownerWindow=Native.GetWindowLongPtr(Handle,-8).ToInt64(),menuVisible=menu.Visible,
                 rectangle=new{x=Left,y=Top,width=Width,height=Height}
             }),new UTF8Encoding(false));
@@ -755,6 +772,16 @@ sealed class UsageForm:Form {
         if(Math.Abs(newScale-scale)>0.01) { scale=newScale; SetLabelFonts(); }
         Rectangle area=Screen.FromHandle(app).WorkingArea;
         Rectangle placement=PlaceBar(rect,area,scale);
+        int left=TitleAnchor.Left(app,rect.Left,scale);
+        int remaining=rect.Right-left-(int)(144*scale);
+        if(remaining<190*scale) {
+            placement.Y=rect.Top+(int)(40*scale);
+            remaining=rect.Right-left-(int)(8*scale);
+            if(remaining<190*scale) {left=rect.Left+(int)(64*scale);remaining=rect.Right-left-(int)(8*scale);}
+        }
+        placement.X=Math.Max(area.Left,Math.Min(left,area.Right-(int)(190*scale)));
+        placement.Width=Math.Min((int)(630*scale),remaining);
+        placement.Height=(int)(LayoutHeight((int)Math.Round(placement.Width/scale))*scale);
         if(!Visible) Show();
         BindOwner(app);
         // Move and resize without changing the Z order or stealing focus.
@@ -777,7 +804,7 @@ sealed class UsageForm:Form {
         int leftReserve=(int)(64*dpi),rightReserve=(int)(144*dpi);
         int width=Math.Min((int)(630*dpi),appRect.Right-appRect.Left-leftReserve-rightReserve);
         width=Math.Max((int)(190*dpi),width);
-        int height=(int)((width<290*dpi?78:38)*dpi);
+        int height=(int)(LayoutHeight((int)Math.Round(width/dpi))*dpi);
         int x=appRect.Left+(appRect.Right-appRect.Left-width)/2;
         x=Math.Min(x,appRect.Right-rightReserve-width);
         x=Math.Max(x,appRect.Left+leftReserve);
@@ -790,7 +817,7 @@ sealed class UsageForm:Form {
         using(Pen border=new Pen(Color.FromArgb(62,66,74))) e.Graphics.DrawRectangle(border,0,0,Width-1,Height-1);
     }
     public void MakePreview(string path,int dpi,int logicalWidth) {
-        scale=dpi/96f; ClientSize=new Size((int)(logicalWidth*scale),(int)((logicalWidth<290?78:38)*scale));
+        scale=dpi/96f; ClientSize=new Size((int)(logicalWidth*scale),(int)(LayoutHeight(logicalWidth)*scale));
         SetLabelFonts();
         DateTimeOffset epoch=new DateTimeOffset(1970,1,1,0,0,0,TimeSpan.Zero);
         quota=new Quota{Five=46,Week=92,FiveReset=(long)(DateTimeOffset.UtcNow.AddHours(3)-epoch).TotalSeconds,WeekReset=(long)(DateTimeOffset.UtcNow.AddDays(4)-epoch).TotalSeconds,Updated=DateTimeOffset.UtcNow};
@@ -810,22 +837,25 @@ sealed class UsageForm:Form {
         }
     }
     internal void VerifyCacheLayout() {
-        foreach(int dpi in new[]{96,144}) foreach(int width in new[]{190,292,420,630}) {
-            scale=dpi/96f; ClientSize=new Size((int)(width*scale),(int)((width<290?78:38)*scale));
+        foreach(int dpi in new[]{96,144}) foreach(int width in new[]{190,289,290,292,420,529,530,609,610,630}) {
+            scale=dpi/96f; ClientSize=new Size((int)(width*scale),(int)(LayoutHeight(width)*scale));
             SetLabelFonts();
-            tokens=new Tokens{Day="2026-10-13",Input=99999999,Cached=99999999}; LayoutLabels();
-            foreach(Label label in new[]{cachedAmount,cachedRatio}) {
+            tokens=new Tokens{Day="2026-10-13",Input=99999999,Cached=99999999,
+                Conversations=new[]{new ConversationRate{Id="test",Running=true,Seconds=40,Input=800000,Output=2000}}}; LayoutLabels();
+            foreach(Label label in new[]{cachedAmount,cachedRatio,rate,outputRate}) {
                 Size textSize=TextRenderer.MeasureText(label.Text,label.Font);
                 if(textSize.Width>label.Width||textSize.Height>label.Height||!ClientRectangle.Contains(label.Bounds))
-                    throw new Exception("缓存指标被裁切："+width+"px @"+dpi+"dpi，"+label.Text);
+                    throw new Exception("统计指标被裁切："+width+"px @"+dpi+"dpi，"+label.Text);
             }
-            if(cachedAmount.Bounds.IntersectsWith(today.Bounds)||cachedRatio.Bounds.IntersectsWith(rate.Bounds))
-                throw new Exception("缓存指标与本日量或均速重叠");
+            Label[] labels={five,week,fiveResetLabel,weekResetLabel,today,rate,outputRate,cachedAmount,cachedRatio,menuButton};
+            for(int i=0;i<labels.Length;i++) for(int j=i+1;j<labels.Length;j++)
+                if(labels[i].Bounds.IntersectsWith(labels[j].Bounds)) throw new Exception("统计标签重叠");
+            if(!outputRate.Text.Contains("50")||!rate.Text.Contains("20.1K")) throw new Exception("输出与消耗均速未分开展示");
         }
     }
 }
 static class Program {
-    public const string Version="1.0.7";
+    public const string Version="1.0.9";
     public static readonly string Root=Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,".."));
     public static readonly string Home=Environment.GetEnvironmentVariable("CODEX_HOME")??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".codex");
     public static readonly string State=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"CodexUsageBar");
@@ -876,6 +906,11 @@ static class Program {
         Native.SetProcessDPIAware(); Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
         if(args.Length>1&&args[0]=="--click-test-host") return InteractionTests.Host(args[1]);
         if(args.Length>1&&args[0]=="--layer-test-host") return InteractionTests.LayerHost(args[1]);
+        if(args.Length>1&&args[0]=="--layout-test") {
+            try { using(UsageForm demo=new UsageForm(true)) demo.VerifyCacheLayout();
+                File.WriteAllText(args[1],Json.Encode(new{success=true,widths=10,dpiValues=2})); return 0;
+            } catch(Exception e) { File.WriteAllText(args[1],Json.Encode(new{success=false,error=e.Message})); return 1; }
+        }
         if(args.Length>1&&args[0]=="--interaction-test") return InteractionTests.Run(args[1]);
         if(args.Length>1&&args[0]=="--follower-test") return FollowerTests.Run(args[1]);
         if(args.Length>1&&args[0]=="--preview") { using(UsageForm demo=new UsageForm(true)) demo.MakePreview(args[1],args.Length>2?Int32.Parse(args[2]):96,args.Length>3?Int32.Parse(args[3]):630); return 0; }
@@ -1024,7 +1059,7 @@ static class Tests {
         File.SetLastWriteTimeUtc(alpha,now.UtcDateTime);
         TokenLedger ledger=new TokenLedger(Path.Combine(root,"rate")); Tokens t=ledger.Scan(now);
         ConversationRate a=TokenLedger.Select(t,"");
-        Check(a.Id=="alpha"&&a.Running&&a.Total==220&&a.Cached==50&&a.PerSecond==22,"本轮速率包含历史、重复、缓存或起点错误");
+        Check(a.Id=="alpha"&&a.Running&&a.Total==220&&a.Cached==50&&a.PerSecond==22&&a.OutputPerSecond==2,"本轮速率包含历史、重复、缓存或起点错误");
         passed.Add("Turn rate excludes previous turns and duplicate snapshots; cached tokens counted once");
         File.WriteAllText(beta,Meta("2026-10-04T12:00:04Z","beta","vscode")+
             Lifecycle("2026-10-04T12:00:05Z","task_started","turn-b")+Event("2026-10-04T12:00:06Z",9000,100,5000),new UTF8Encoding(false));
@@ -1045,15 +1080,20 @@ static class Tests {
         File.AppendAllText(beta,Lifecycle("2026-10-04T12:00:17Z","task_complete","old-turn"),new UTF8Encoding(false));
         t=ledger.Scan(now.AddSeconds(7)); Check(TokenLedger.Select(t,"beta").Running,"旧轮次完成事件结束了当前轮次");
         File.AppendAllText(beta,Lifecycle("2026-10-04T12:00:18Z","task_complete","turn-b"),new UTF8Encoding(false));
-        t=ledger.Scan(now.AddSeconds(8)); Check(!TokenLedger.Select(t,"beta").Running&&TokenLedger.Select(t,"beta").PerSecond==0,"完成后未显示空闲零速率");
+        t=ledger.Scan(now.AddSeconds(8)); Check(!TokenLedger.Select(t,"beta").Running&&TokenLedger.Select(t,"beta").PerSecond==0&&TokenLedger.Select(t,"beta").OutputPerSecond==0,"完成后未显示空闲零速率");
         string start=Lifecycle("2026-10-04T12:00:20Z","task_started","turn-a2");
         File.AppendAllText(alpha,start.Substring(0,start.Length-2),new UTF8Encoding(false));
         t=ledger.Scan(now.AddSeconds(11)); Check(TokenLedger.Select(t,"alpha").Total==220,"半条开始记录被提前应用");
         File.AppendAllText(alpha,start.Substring(start.Length-2)+Event("2026-10-04T12:00:22Z",1300,130,900),new UTF8Encoding(false));
-        t=ledger.Scan(now.AddSeconds(15)); a=TokenLedger.Select(t,"alpha"); Check(a.Total==110&&a.PerSecond==22,"新一轮未清零或未正确使用增量");
-        t=ledger.Scan(now.AddMinutes(16)); Check(TokenLedger.Select(t,"alpha").Stale&&TokenLedger.Select(t,"alpha").PerSecond==null,"停止更新的记录被当成实时速率");
+        t=ledger.Scan(now.AddSeconds(15)); a=TokenLedger.Select(t,"alpha"); Check(a.Total==110&&a.PerSecond==22&&a.OutputPerSecond==2,"新一轮未清零或未正确使用增量");
+        t=ledger.Scan(now.AddMinutes(16)); Check(TokenLedger.Select(t,"alpha").Stale&&TokenLedger.Select(t,"alpha").PerSecond==null&&TokenLedger.Select(t,"alpha").OutputPerSecond==null,"停止更新的记录被当成实时速率");
         File.AppendAllText(alpha,Lifecycle("2026-10-04T12:16:11Z","turn_aborted","turn-a2"),new UTF8Encoding(false));
         t=ledger.Scan(now.AddMinutes(17)); Check(!TokenLedger.Select(t,"alpha").Running,"中止未切换为空闲");
+        Check(TokenLedger.Select(t,"alpha").OutputPerSecond==0,"中止后输出均速未清零");
+        ConversationRate example=new ConversationRate{Running=true,Seconds=40,Input=800000,Output=2000,Cached=700000};
+        Check(example.PerSecond==20050&&example.OutputPerSecond==50,"输入或缓存混入输出均速");
+        example.Seconds=0; Check(example.OutputPerSecond==null,"零耗时应显示未知");
+        passed.Add("Output-only turn average excludes input/cache; completion, abort, reset and stale states match consumption rate");
         passed.Add("Every-second elapsed-time update, matching completion, partial writes, new-turn reset, stale unknown and abort");
     }
     static void TimeZoneTests(string root,List<string> passed) {
