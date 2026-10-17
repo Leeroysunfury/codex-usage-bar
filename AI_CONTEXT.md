@@ -4,7 +4,7 @@
 Windows Codex 桌面独立悬浮条，原生 C# WinForms，使用系统 .NET Framework 编译器构建。此目录是公开源码工作树；`src/UsageBar.cs` 为主实现，`src/TitleAnchor.cs` 仅查询帮助菜单几何。运行数据不放在此目录。
 
 ## Current State
-本地 1.0.9 已安装并运行，自动启动已指向新版。用户于 2026-10-17 明确授权将 1.0.8/1.0.9 本地更新上传到已有公开仓库 Leeroysunfury/codex-usage-bar，目标发布标签为 v1.0.9。发布状态以远端 Release 为准。
+1.0.9 已安装并运行，自动启动已指向新版。用户于 2026-10-17 明确授权上传新版；源码与标签 v1.0.9 已推送到已有公开仓库 Leeroysunfury/codex-usage-bar，正式 Release 已发布并设为 Latest（非草稿、非预发布），含 Windows x64 ZIP。此前 1.0.8 的定位调整一并发布。
 
 - 保留五小时/周剩余额度、重置时间、本地自然日 Token、缓存量及缓存命中率。
 - 1.0.8 左边缘跟随帮助菜单右边缘，普通所属窗口，不设系统置顶；窄窗口避让窗口控制按钮。
@@ -16,6 +16,7 @@ Windows Codex 桌面独立悬浮条，原生 C# WinForms，使用系统 .NET Fra
 ## Verification
 1.0.9 构建及自测通过；输出测试覆盖大输入/缓存不计入输出、轮次重置、结束归零与过期未知。`--layout-test` 通过 10 种宽度、96/144 DPI 的两项速率/缓存文字尺寸及标签重叠检查。虚构预览已检查并更新 README 演示图。
 本机原生窗口核验：两个速度标签均存在、窗口可见且位于主窗上方、非 TopMost、输出公式一致、无日志读取错误、自动启动指向新版。未运行会模拟鼠标的整套交互测试；菜单与层级逻辑本次未修改。验证未发送模型推理请求。
+公开目录隐私扫描通过；发布 ZIP 的 15 个条目逐项匹配源码目录，程序与已安装验证版本一致。GitHub 上传资产的 SHA-256 与本地包一致。AI_CONTEXT 仅随源码提交，不包含在便携包内。
 
 ## Relevant Paths
 - `scripts/build.ps1`：构建。
@@ -24,7 +25,7 @@ Windows Codex 桌面独立悬浮条，原生 C# WinForms，使用系统 .NET Fra
 - `scripts/check-publication.ps1`：公开目录隐私扫描。
 
 ## Context Metadata
-- Last verified: 2026-10-17T16:11:02+08:00
-- Git revision: 88cd252（本次发布准备基线；1.0.9 发布代码以 v1.0.9 标签为准）
-- Working tree: 此快照为 1.0.9 发布准备状态，含本地 1.0.8/1.0.9 更新；不以基线 revision 代替完整状态。
+- Last verified: 2026-10-17T16:23:59+08:00
+- Git revision: ecc029c（v1.0.9 发布代码提交）
+- Working tree: 源码及程序与 v1.0.9 一致；本次仅更新发布状态说明。
 - Context schema: 1
