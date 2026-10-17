@@ -1,8 +1,8 @@
 # Codex Usage Bar · Codex 额度条
 
-Windows Codex 桌面版的独立额度悬浮条，左边缘对齐顶部帮助菜单右侧，随窗口移动和缩放。版本：**1.0.9**。
+Windows Codex 桌面版的独立额度悬浮条，左边缘对齐顶部帮助菜单右侧，随窗口移动和缩放。版本：**1.0.10**。
 
-[下载 Windows x64 便携包](https://github.com/Leeroysunfury/codex-usage-bar/releases/download/v1.0.9/codex-usage-bar-1.0.9-windows-x64.zip) · [版本说明](https://github.com/Leeroysunfury/codex-usage-bar/releases/tag/v1.0.9)
+[下载 Windows x64 便携包](https://github.com/Leeroysunfury/codex-usage-bar/releases/download/v1.0.10/codex-usage-bar-1.0.10-windows-x64.zip) · [版本说明](https://github.com/Leeroysunfury/codex-usage-bar/releases/tag/v1.0.10)
 
 ![额度条演示，全部为虚构数据](docs/assets/preview.png)
 
@@ -12,6 +12,7 @@ Windows Codex 桌面版的独立额度悬浮条，左边缘对齐顶部帮助菜
 - 本日输入与输出 Token 总量，按系统本地时区自然日统计。
 - 本日缓存命中量、缓存输入占总输入的命中率。
 - 指定桌面对话本轮消耗均速与输出均速，分别显示输入加输出、仅输出的 Token/秒。
+- 额度列优先显示完整百分比，标签随实际列宽缩短，适配 Windows 缩放与窄窗口。
 - 窄窗口布局、菜单外点击关闭、普通窗口层级与输入法候选窗共存。
 - 可选“随 Codex 启动”，最后一个 Codex 窗口关闭后停止额度查询。
 
@@ -71,7 +72,7 @@ $test.WaitForExit()
 Get-Content .\test-results\self-test.json
 ```
 
-`--self-test` 使用虚构日志验证计数、日期、缓存比例、两项均速和代理解析。`--layout-test test-results/layout.json` 检查两项均速及缓存标签在不同窗口宽度和 DPI 下的显示，不模拟鼠标点击。`--interaction-test` 和 `--follower-test` 会创建测试窗口，前者会模拟鼠标点击，请在本机没有其他交互时手动运行。它们不发送模型请求。
+`--self-test` 使用虚构日志验证计数、日期、缓存比例、两项均速和代理解析。`--layout-test test-results/layout.json` 检查额度百分比、两项均速及缓存标签在不同窗口宽度和 DPI 下的显示，不模拟鼠标点击。`--interaction-test` 和 `--follower-test` 会创建测试窗口，前者会模拟鼠标点击，请在本机没有其他交互时手动运行。它们不发送模型请求。
 
 文件路径由项目位置、环境变量或 Windows 用户目录动态解析；没有写死开发者磁盘路径。Windows 登录启动项需要系统可定位的程序路径，因此在启用时动态生成，不能存储依赖当前工作目录的相对命令。
 

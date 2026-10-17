@@ -1,6 +1,6 @@
 {
   "name": "codex-usage-bar",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Windows 桌面版顶部显示五小时与周剩余额度及重置时间、本日 Token、缓存命中量与命中率、活跃对话消耗均速与输出均速。",
   "author": {
     "name": "Codex Usage Bar contributors"

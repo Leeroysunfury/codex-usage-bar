@@ -25,6 +25,8 @@ description: 启动、停止或排查 Windows Codex 桌面额度条，显示五�
 
 1.0.9 同时常驻显示“消耗均速”和“输出均速”。消耗均速 = 选中桌面对话本轮已记录的（输入 + 输出）Token / 本轮经过秒数，包含缓存输入；输出均速 = 本轮已记录的输出 Token / 本轮经过秒数，只含输出（包含推理输出且不重复相加），不含输入和缓存。两者均包含工具等待时间。每秒刷新，但日志在每次模型调用结束后才更新用量；不要说成逐 Token 实时生成测速或费用速率。默认跟踪最近开始运行的桌面对话，不能据此断言是当前界面正在查看的对话。多对话并行时可从“速率跟踪对话”菜单指定，选择保存到状态目录 `rate-preferences.json`。不合并 CLI 或子代理。完成/中止显示 0，记录超过 15 分钟未更新显示未知。新会话发现最多约 5 秒。
 
+1.0.10 加宽五小时额度列，额度标签按实际文字尺寸在“5小时剩余”“5小时”“5h”之间缩短，始终保留完整百分比，周额度同样处理；不通过缩小额度字体来挤入。使用统一的逻辑宽度判断换行，避免 125% 等缩放下阈值取整造成裁切。`--layout-test` 覆盖 10 种宽度、96/120/144/192 DPI，以及 100%、99.9%、9.9%、0% 和未知额度。
+
 宽度至少 530px 时保持 38px 高；290–529px 分两组、76px 高；更窄窗口分三组、114px 高，按 DPI 缩放，缩短标签但保留消耗/输出区分。
 
 排查时读取 `%LOCALAPPDATA%/CodexUsageBar/status.json`，它仅含额度、重置时间、Token 统计、跟踪会话/轮次 ID、速率口径、窗口位置和更新时间，不含认证或对话文本。`fiveHourResetsAt`、`weeklyResetsAt` 是官方 Unix 秒时间戳，未知为 null；`fiveHourResetTime`、`weeklyResetTime` 为完整系统本地时间，`fiveHourResetText`、`weeklyResetText` 为当前显示文字。`tokensPerSecond` 是消耗均速，`outputTokensPerSecond` 是输出均速，`activeTurnOutputTokens` 为本轮已记录输出数量，`outputRateDefinition` 说明输出口径；`activeThreadId` 标识跟踪对象，`rateMode` 说明自动或指定。后台程序自己复用 Codex 当前认证，勿读取或输出凭据。

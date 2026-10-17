@@ -562,19 +562,20 @@ sealed class UsageForm:Form {
         LayoutLabels(); Render();
     }
     void LayoutLabels() {
-        compact=Width<610*scale; tiny=Width<430*scale; twoRows=Width<530*scale;
+        int logicalWidth=(int)Math.Round(Width/scale);
+        compact=logicalWidth<610; tiny=logicalWidth<430; twoRows=logicalWidth<530;
         int gap=(int)((compact?8:12)*scale),h=ClientSize.Height,button=(int)(25*scale);
         int available=Width-gap-button,firstLine=(int)(18*scale),band=(int)(38*scale);
         Label[] groups={five,week,today,rate,outputRate};
         if(twoRows) {
-            int columns=Width<290*scale?2:3;
+            int columns=logicalWidth<290?2:3;
             for(int i=0;i<groups.Length;i++) {
                 int col=i%columns;
                 groups[i].SetBounds(gap+available*col/columns,1+(i/columns)*band,
                     available*(col+1)/columns-available*col/columns,firstLine);
             }
         } else {
-            int[] edges={0,(int)(available*0.16),(int)(available*0.34),(int)(available*0.57),(int)(available*0.785),available};
+            int[] edges={0,(int)(available*0.20),(int)(available*0.38),(int)(available*0.60),(int)(available*0.80),available};
             for(int i=0;i<groups.Length;i++) groups[i].SetBounds(gap+edges[i],1,edges[i+1]-edges[i],firstLine);
         }
         fiveResetLabel.SetBounds(five.Left,five.Top+firstLine,five.Width,band-firstLine-2);
@@ -633,8 +634,8 @@ sealed class UsageForm:Form {
         return mode+"\n"+detail+"\n消耗均速 = 本轮已记录的（输入 + 输出）Token / 本轮经过秒数，含缓存输入。\n输出均速 = 本轮已记录的输出 Token / 本轮经过秒数，含推理输出且不重复相加。\n两者均包含工具等待时间，是本轮平均值，不是逐 Token 实时生成速度。\n每秒刷新，Token 数量在模型调用结束写入记录后更新，新对话发现最多约 5 秒。\n同时运行多个对话时只统计选中的一个，可在菜单指定；不合并子代理。";
     }
     void Render() {
-        five.Text=(tiny?"5h ":compact?"5h 剩余 ":"5 小时剩余  ")+Percent(quota.Five);
-        week.Text=(tiny?"周":compact?"周剩余 ":"周剩余  ")+Percent(quota.Week);
+        SetQuotaText(five,"5小时剩余 ","5小时 ","5h ",quota.Five);
+        SetQuotaText(week,"周剩余 ","周 ","周 ",quota.Week);
         fiveResetLabel.Text=ResetLabelText(quota.FiveReset,false,tiny,DateTimeOffset.UtcNow);
         weekResetLabel.Text=ResetLabelText(quota.WeekReset,true,tiny,DateTimeOffset.UtcNow);
         FitResetLabel(fiveResetLabel); FitResetLabel(weekResetLabel);
@@ -669,6 +670,12 @@ sealed class UsageForm:Form {
         tip.SetToolTip(status,"额度每 45 秒查询；Token 每秒读取。\n最近成功："+(quota.Updated==default(DateTimeOffset)?"尚未查询":UserTime.InZone(quota.Updated,TimeZoneInfo.Local).ToString("HH:mm:ss"))+"\n"+quota.Error);
         Invalidate();
         WriteStatus();
+    }
+    void SetQuotaText(Label label,string full,string shortLabel,string minimal,double? value) {
+        string amount=Percent(value);
+        label.Text=full+amount;
+        if(TextRenderer.MeasureText(label.Text,label.Font).Width>label.Width) label.Text=shortLabel+amount;
+        if(TextRenderer.MeasureText(label.Text,label.Font).Width>label.Width) label.Text=minimal+amount;
     }
     void SetRateText(Label label,string full,string shortLabel,string minimal,double? value) {
         string amount=value.HasValue?ShortRate(value.Value):"—";
@@ -837,25 +844,34 @@ sealed class UsageForm:Form {
         }
     }
     internal void VerifyCacheLayout() {
-        foreach(int dpi in new[]{96,144}) foreach(int width in new[]{190,289,290,292,420,529,530,609,610,630}) {
+        foreach(int dpi in new[]{96,120,144,192}) foreach(int width in new[]{190,289,290,292,420,529,530,609,610,630}) {
             scale=dpi/96f; ClientSize=new Size((int)(width*scale),(int)(LayoutHeight(width)*scale));
             SetLabelFonts();
+            quota=new Quota{Five=100,Week=99.9};
             tokens=new Tokens{Day="2026-10-13",Input=99999999,Cached=99999999,
                 Conversations=new[]{new ConversationRate{Id="test",Running=true,Seconds=40,Input=800000,Output=2000}}}; LayoutLabels();
-            foreach(Label label in new[]{cachedAmount,cachedRatio,rate,outputRate}) {
+            foreach(Label label in new[]{five,week,cachedAmount,cachedRatio,rate,outputRate}) {
                 Size textSize=TextRenderer.MeasureText(label.Text,label.Font);
                 if(textSize.Width>label.Width||textSize.Height>label.Height||!ClientRectangle.Contains(label.Bounds))
-                    throw new Exception("统计指标被裁切："+width+"px @"+dpi+"dpi，"+label.Text);
+                    throw new Exception("统计指标被裁切："+width+"px @"+dpi+"dpi，"+label.Text+" text="+textSize+" bounds="+label.Size);
             }
             Label[] labels={five,week,fiveResetLabel,weekResetLabel,today,rate,outputRate,cachedAmount,cachedRatio,menuButton};
             for(int i=0;i<labels.Length;i++) for(int j=i+1;j<labels.Length;j++)
                 if(labels[i].Bounds.IntersectsWith(labels[j].Bounds)) throw new Exception("统计标签重叠");
             if(!outputRate.Text.Contains("50")||!rate.Text.Contains("20.1K")) throw new Exception("输出与消耗均速未分开展示");
+            foreach(double? remaining in new double?[]{100,99.9,9.9,0,null}) {
+                quota.Five=quota.Week=remaining; Render();
+                foreach(Label label in new[]{five,week}) {
+                    Size textSize=TextRenderer.MeasureText(label.Text,label.Font);
+                    if(!label.Text.EndsWith(Percent(remaining),StringComparison.Ordinal)||textSize.Width>label.Width||textSize.Height>label.Height)
+                        throw new Exception("额度百分比被裁切："+width+"px @"+dpi+"dpi，"+label.Text+" text="+textSize+" bounds="+label.Size);
+                }
+            }
         }
     }
 }
 static class Program {
-    public const string Version="1.0.9";
+    public const string Version="1.0.10";
     public static readonly string Root=Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,".."));
     public static readonly string Home=Environment.GetEnvironmentVariable("CODEX_HOME")??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".codex");
     public static readonly string State=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"CodexUsageBar");
@@ -908,7 +924,7 @@ static class Program {
         if(args.Length>1&&args[0]=="--layer-test-host") return InteractionTests.LayerHost(args[1]);
         if(args.Length>1&&args[0]=="--layout-test") {
             try { using(UsageForm demo=new UsageForm(true)) demo.VerifyCacheLayout();
-                File.WriteAllText(args[1],Json.Encode(new{success=true,widths=10,dpiValues=2})); return 0;
+                File.WriteAllText(args[1],Json.Encode(new{success=true,widths=10,dpiValues=4,quotaValues=5})); return 0;
             } catch(Exception e) { File.WriteAllText(args[1],Json.Encode(new{success=false,error=e.Message})); return 1; }
         }
         if(args.Length>1&&args[0]=="--interaction-test") return InteractionTests.Run(args[1]);
